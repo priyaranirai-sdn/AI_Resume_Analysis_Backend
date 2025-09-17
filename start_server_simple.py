@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Startup script for TalentFitAI
-This script starts the FastAPI server with proper configuration.
+Simplified startup script for TalentFitAI (without heavy AI models)
+This script starts the FastAPI server with basic configuration.
 """
 
 import uvicorn
@@ -11,7 +11,7 @@ import sys
 def start_server():
     """Start the TalentFitAI FastAPI server"""
     
-    print("🚀 Starting TalentFitAI Backend Server...")
+    print("🚀 Starting TalentFitAI Backend Server (Simple Mode)...")
     print("=" * 50)
     
     # Check if we're in the right directory
@@ -37,9 +37,9 @@ def start_server():
         # Start the server
         uvicorn.run(
             "app.main:app",
-            host="0.0.0.0",
+            host="127.0.0.1",  # Use localhost instead of 0.0.0.0
             port=8000,
-            reload=True,
+            reload=False,  # Disable reload for stability
             log_level="info",
             access_log=True
         )
@@ -55,6 +55,8 @@ def start_server():
         sys.exit(0)
     except Exception as e:
         print(f"❌ Error starting server: {e}")
+        import traceback
+        traceback.print_exc()
         sys.exit(1)
 
 if __name__ == "__main__":
