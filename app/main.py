@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from sqlalchemy.exc import IntegrityError
-from app.routers import job, auth, requisition, job_post
+from app.routers import job, auth, requisition, job_post, resume_analysis
 from app.models import create_tables
 from app.utils.error_handlers import (
     validation_exception_handler,
@@ -40,6 +40,7 @@ app.include_router(auth.router)
 app.include_router(requisition.router)
 app.include_router(job_post.router)
 app.include_router(job.router)  # Keep the original job router for backward compatibility
+app.include_router(resume_analysis.router)
 
 @app.get("/")
 def root():

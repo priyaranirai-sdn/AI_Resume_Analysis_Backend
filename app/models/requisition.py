@@ -25,3 +25,4 @@ class Requisition(Base):
     # Relationships
     created_by_user = relationship("User", back_populates="requisitions")
     job_posts = relationship("JobPost", back_populates="requisition")
+    resume_analyses = relationship("ResumeAnalysis", back_populates="requisition")

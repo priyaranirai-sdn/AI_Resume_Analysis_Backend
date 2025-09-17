@@ -21,6 +21,7 @@ class User(Base):
     # Relationships
     requisitions = relationship("Requisition", back_populates="created_by_user")
     job_posts = relationship("JobPost", back_populates="created_by_user")
+    resume_analyses = relationship("ResumeAnalysis", back_populates="created_by_user")
     
     def verify_password(self, password: str) -> bool:
         return pwd_context.verify(password, self.hashed_password)

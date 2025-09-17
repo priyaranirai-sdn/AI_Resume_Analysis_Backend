@@ -30,7 +30,7 @@ def create_database():
         # Default values if parsing fails
         username = "postgres"
         password = "password"
-        host = "localhost"
+        host = "172.10.3.17"
         port = 5432
     
     print(f"🔧 Setting up PostgreSQL database...")
