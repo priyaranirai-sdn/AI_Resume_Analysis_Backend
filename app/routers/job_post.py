@@ -7,8 +7,12 @@ from app.models.job_post import JobPost
 from app.models.requisition import Requisition
 from app.models.user import User
 from app.auth import get_current_user
-from app.services.jd_generator_lazy import generate_jd
+from app.services.jd_generator_optimized import generate_jd
 from datetime import datetime, timedelta
+import logging
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/job-post", tags=["Job Post"])
 
@@ -78,7 +82,7 @@ def create_job_post(
             )
         
         # Log the start of AI generation
-        print(f"Starting AI generation for requisition {requisition.id}...")
+        logger.info(f"Starting AI generation for requisition {requisition.id}...")
         start_time = time.time()
         
         # Generate job description using AI with timeout
@@ -94,13 +98,13 @@ def create_job_post(
                     department=requisition.department
                 )
                 
-                # Wait for AI generation with 30 second timeout
-                ai_description = future.result(timeout=30)
+                # Wait for AI generation with 15 second timeout (reduced from 30)
+                ai_description = future.result(timeout=15)
                 
         except Exception as ai_error:
-            print(f"AI generation failed: {ai_error}")
+            logger.error(f"AI generation failed: {ai_error}")
             # Use fallback description if AI fails
-            from app.services.jd_generator_lazy import create_fallback_jd
+            from app.services.jd_generator_optimized import create_fallback_jd
             ai_description = create_fallback_jd(
                 designation=requisition.title,
                 experience=requisition.experience_required,
@@ -108,10 +112,10 @@ def create_job_post(
                 skills=requisition.skills_required,
                 department=requisition.department
             )
-            print("Using fallback job description")
+            logger.info("Using fallback job description")
         
         generation_time = time.time() - start_time
-        print(f"Job description generated in {generation_time:.2f} seconds")
+        logger.info(f"Job description generated in {generation_time:.2f} seconds")
         
         # Calculate expiry date
         expires_at = datetime.utcnow() + timedelta(days=job_post.expires_in_days)
@@ -135,14 +139,14 @@ def create_job_post(
         db.commit()
         db.refresh(db_job_post)
         
-        print(f"Job post created successfully with ID: {db_job_post.id}")
+        logger.info(f"Job post created successfully with ID: {db_job_post.id}")
         return db_job_post
         
     except HTTPException:
         # Re-raise HTTP exceptions
         raise
     except Exception as e:
-        print(f"Unexpected error in create_job_post: {e}")
+        logger.error(f"Unexpected error in create_job_post: {e}", exc_info=True)
         db.rollback()
         raise HTTPException(
             status_code=500,
@@ -326,3 +330,51 @@ def delete_job_post(
     db.commit()
     
     return {"message": "Job post deleted successfully"}
+
+@router.get("/health/ai")
+def check_ai_health():
+    """Check AI model health and performance"""
+    try:
+        from app.services.jd_generator_optimized import get_model_components
+        import time
+        
+        start_time = time.time()
+        generator = get_model_components()
+        load_time = time.time() - start_time
+        
+        if generator is None:
+            return {
+                "status": "unhealthy",
+                "message": "AI model not available",
+                "load_time": load_time
+            }
+        
+        # Test generation with a simple prompt
+        test_start = time.time()
+        test_response = generator(
+            "Test job description for Software Engineer",
+            max_new_tokens=50,
+            num_return_sequences=1,
+            do_sample=True,
+            temperature=0.7,
+            pad_token_id=generator.tokenizer.eos_token_id,
+            truncation=True,
+            return_full_text=False
+        )
+        test_time = time.time() - test_start
+        
+        return {
+            "status": "healthy",
+            "message": "AI model is working correctly",
+            "load_time": load_time,
+            "test_generation_time": test_time,
+            "model_available": True
+        }
+        
+    except Exception as e:
+        logger.error(f"AI health check failed: {e}")
+        return {
+            "status": "unhealthy",
+            "message": f"AI model error: {str(e)}",
+            "model_available": False
+        }
