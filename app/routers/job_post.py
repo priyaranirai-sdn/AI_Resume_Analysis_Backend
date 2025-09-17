@@ -59,50 +59,95 @@ def create_job_post(
     db: Session = Depends(get_db)
 ):
     """Create a job post from a requisition with AI-generated description"""
-    # Get the requisition
-    requisition = db.query(Requisition).filter(
-        Requisition.id == job_post.requisition_id,
-        Requisition.created_by == current_user.id
-    ).first()
+    import time
+    import asyncio
+    from concurrent.futures import ThreadPoolExecutor
+    from fastapi import BackgroundTasks
     
-    if not requisition:
-        raise HTTPException(
-            status_code=404,
-            detail="Requisition not found"
+    try:
+        # Get the requisition
+        requisition = db.query(Requisition).filter(
+            Requisition.id == job_post.requisition_id,
+            Requisition.created_by == current_user.id
+        ).first()
+        
+        if not requisition:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Requisition with ID {job_post.requisition_id} not found or you don't have permission to access it"
+            )
+        
+        # Log the start of AI generation
+        print(f"Starting AI generation for requisition {requisition.id}...")
+        start_time = time.time()
+        
+        # Generate job description using AI with timeout
+        try:
+            # Use ThreadPoolExecutor to handle AI generation with timeout
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(
+                    generate_jd,
+                    designation=requisition.title,
+                    experience=requisition.experience_required,
+                    location=requisition.location,
+                    skills=requisition.skills_required,
+                    department=requisition.department
+                )
+                
+                # Wait for AI generation with 30 second timeout
+                ai_description = future.result(timeout=30)
+                
+        except Exception as ai_error:
+            print(f"AI generation failed: {ai_error}")
+            # Use fallback description if AI fails
+            from app.services.jd_generator_lazy import create_fallback_jd
+            ai_description = create_fallback_jd(
+                designation=requisition.title,
+                experience=requisition.experience_required,
+                location=requisition.location,
+                skills=requisition.skills_required,
+                department=requisition.department
+            )
+            print("Using fallback job description")
+        
+        generation_time = time.time() - start_time
+        print(f"Job description generated in {generation_time:.2f} seconds")
+        
+        # Calculate expiry date
+        expires_at = datetime.utcnow() + timedelta(days=job_post.expires_in_days)
+        
+        # Create job post
+        db_job_post = JobPost(
+            requisition_id=requisition.id,
+            title=requisition.title,
+            description=ai_description,
+            location=requisition.location,
+            experience_required=requisition.experience_required,
+            skills_required=requisition.skills_required,
+            salary_range_min=requisition.salary_range_min,
+            salary_range_max=requisition.salary_range_max,
+            employment_type=requisition.employment_type,
+            created_by=current_user.id,
+            expires_at=expires_at
         )
-    
-    # Generate job description using AI
-    ai_description = generate_jd(
-        designation=requisition.title,
-        experience=requisition.experience_required,
-        location=requisition.location,
-        skills=requisition.skills_required,
-        department=requisition.department
-    )
-    
-    # Calculate expiry date
-    expires_at = datetime.utcnow() + timedelta(days=job_post.expires_in_days)
-    
-    # Create job post
-    db_job_post = JobPost(
-        requisition_id=requisition.id,
-        title=requisition.title,
-        description=ai_description,
-        location=requisition.location,
-        experience_required=requisition.experience_required,
-        skills_required=requisition.skills_required,
-        salary_range_min=requisition.salary_range_min,
-        salary_range_max=requisition.salary_range_max,
-        employment_type=requisition.employment_type,
-        created_by=current_user.id,
-        expires_at=expires_at
-    )
-    
-    db.add(db_job_post)
-    db.commit()
-    db.refresh(db_job_post)
-    
-    return db_job_post
+        
+        db.add(db_job_post)
+        db.commit()
+        db.refresh(db_job_post)
+        
+        print(f"Job post created successfully with ID: {db_job_post.id}")
+        return db_job_post
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except Exception as e:
+        print(f"Unexpected error in create_job_post: {e}")
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to create job post: {str(e)}"
+        )
 
 @router.get("/", response_model=List[JobPostResponse])
 def get_job_posts(
