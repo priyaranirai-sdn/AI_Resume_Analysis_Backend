@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
-from app.services.jd_generator import generate_jd
+from app.services.jd_generator_lazy import generate_jd
 
 router = APIRouter(prefix="/job", tags=["Job Description"])
 

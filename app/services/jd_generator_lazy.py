@@ -1,9 +1,16 @@
 from transformers import pipeline
 import re
 
-# Load a text-generation model from HuggingFace (free)
-# Using a more suitable model for job descriptions
-generator = pipeline("text-generation", model="microsoft/DialoGPT-medium")
+# Global variable to store the generator (lazy loading)
+_generator = None
+
+def get_generator():
+    """Get the generator instance (lazy loading)"""
+    global _generator
+    if _generator is None:
+        print("Loading AI model... This may take a moment.")
+        _generator = pipeline("text-generation", model="microsoft/DialoGPT-medium")
+    return _generator
 
 def generate_jd(designation: str, experience: int, location: str, skills: list = None, department: str = None) -> str:
     """
@@ -27,6 +34,7 @@ Write a professional job description with the following sections:
 Format it like a LinkedIn job posting:"""
 
     try:
+        generator = get_generator()
         response = generator(
             prompt, 
             max_new_tokens=256, 

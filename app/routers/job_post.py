@@ -7,7 +7,7 @@ from app.models.job_post import JobPost
 from app.models.requisition import Requisition
 from app.models.user import User
 from app.auth import get_current_user
-from app.services.jd_generator import generate_jd
+from app.services.jd_generator_lazy import generate_jd
 from datetime import datetime, timedelta
 
 router = APIRouter(prefix="/job-post", tags=["Job Post"])
