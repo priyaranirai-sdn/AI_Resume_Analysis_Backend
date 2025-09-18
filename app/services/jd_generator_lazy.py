@@ -1,11 +1,11 @@
 from transformers import pipeline
 import re
 
-# Global variable to store the generator (lazy loading)
+# Global variable to store the generator
 _generator = None
 
 def get_generator():
-    """Get the generator instance (lazy loading)"""
+    """Get the generator instance """
     global _generator
     if _generator is None:
         print("Loading AI model... This may take a moment.")
@@ -14,10 +14,12 @@ def get_generator():
 
 def generate_jd(designation: str, experience: int, location: str, skills: list = None, department: str = None) -> str:
     """
-    Generates a comprehensive job description using AI.
+    Generate a comprehensive job description using AI technology
     """
+    # This ensures proper formatting in the AI prompt
     skills_text = ", ".join(skills) if skills else "relevant technical skills"
-    
+
+    # This prompt engineering approach improves generation quality
     prompt = f"""Job Title: {designation}
 Department: {department or "Technology"}
 Location: {location}
@@ -35,27 +37,26 @@ Format it like a LinkedIn job posting:"""
 
     try:
         generator = get_generator()
+        
+        # Generate job description using AI model
         response = generator(
             prompt, 
-            max_new_tokens=256, 
-            num_return_sequences=1, 
-            do_sample=True,
-            temperature=0.7,
-            pad_token_id=generator.tokenizer.eos_token_id,
-            truncation=True
+            max_new_tokens=256,  # Limit output length for performance
+            num_return_sequences=1,  # Generate single response
+            do_sample=True,  # Enable sampling for creativity
+            temperature=0.7,  # Balance creativity and coherence
+            pad_token_id=generator.tokenizer.eos_token_id,  # Handle padding
+            truncation=True  # Enable truncation for long inputs
         )
         
         generated_text = response[0]["generated_text"]
         
         # Clean up the generated text
-        # Remove the prompt from the response
         if "Write a professional job description" in generated_text:
             generated_text = generated_text.split("Write a professional job description")[1]
-        
-        # Ensure proper formatting
+
         generated_text = generated_text.strip()
         
-        # If the response is too short, add a fallback
         if len(generated_text) < 200:
             return create_fallback_jd(designation, experience, location, skills, department)
             
@@ -66,11 +67,7 @@ Format it like a LinkedIn job posting:"""
         return create_fallback_jd(designation, experience, location, skills, department)
 
 def create_fallback_jd(designation: str, experience: int, location: str, skills: list = None, department: str = None) -> str:
-    """
-    Creates a fallback job description when AI generation fails.
-    """
     skills_text = ", ".join(skills) if skills else "relevant technical skills"
-    
     return f"""
 # {designation}
 

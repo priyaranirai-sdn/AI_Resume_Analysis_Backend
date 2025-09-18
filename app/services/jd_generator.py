@@ -2,15 +2,18 @@ from transformers import pipeline
 import re
 
 # Load a text-generation model from HuggingFace (free)
-# Using a more suitable model for job descriptions
+# DialoGPT-medium is chosen for its conversational capabilities and job description suitability
 generator = pipeline("text-generation", model="microsoft/DialoGPT-medium")
 
 def generate_jd(designation: str, experience: int, location: str, skills: list = None, department: str = None) -> str:
     """
-    Generates a comprehensive job description using AI.
+    Generate a comprehensive job description using AI
     """
+    # Prepare skills text for prompt engineering
     skills_text = ", ".join(skills) if skills else "relevant technical skills"
     
+    # Construct comprehensive prompt for AI generation
+    # This prompt engineering approach improves generation quality
     prompt = f"""Job Title: {designation}
 Department: {department or "Technology"}
 Location: {location}
@@ -27,6 +30,8 @@ Write a professional job description with the following sections:
 Format it like a LinkedIn job posting:"""
 
     try:
+        # Generate job description using AI model
+        # This is the core AI functionality that creates professional content
         response = generator(
             prompt, 
             max_new_tokens=256, 
@@ -40,14 +45,11 @@ Format it like a LinkedIn job posting:"""
         generated_text = response[0]["generated_text"]
         
         # Clean up the generated text
-        # Remove the prompt from the response
         if "Write a professional job description" in generated_text:
             generated_text = generated_text.split("Write a professional job description")[1]
         
-        # Ensure proper formatting
         generated_text = generated_text.strip()
         
-        # If the response is too short, add a fallback
         if len(generated_text) < 200:
             return create_fallback_jd(designation, experience, location, skills, department)
             
@@ -58,11 +60,7 @@ Format it like a LinkedIn job posting:"""
         return create_fallback_jd(designation, experience, location, skills, department)
 
 def create_fallback_jd(designation: str, experience: int, location: str, skills: list = None, department: str = None) -> str:
-    """
-    Creates a fallback job description when AI generation fails.
-    """
     skills_text = ", ".join(skills) if skills else "relevant technical skills"
-    
     return f"""
 # {designation}
 

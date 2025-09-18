@@ -12,14 +12,19 @@ from app.services.jd_generator_ultimate import generate_jd_ultimate
 from datetime import datetime, timedelta
 import logging
 
-# Configure logging
+# Configure logging for job post operations
 logger = logging.getLogger(__name__)
 
+# Create router instance with job post prefix and tag
 router = APIRouter(prefix="/job-post", tags=["Job Post"])
 
 class JobPostCreate(BaseModel):
-    requisition_id: int
-    expires_in_days: int = 30
+    """
+    This model defines the minimal data required to create a job post from a requisition.
+    The AI system will generate the complete job description automatically.
+    """
+    requisition_id: int  # ID of the requisition to create job post from
+    expires_in_days: int = 30  # Default 30-day expiration for job posts
 
 class JobPostUpdate(BaseModel):
     title: Optional[str] = None
@@ -36,15 +41,15 @@ class JobPostResponse(BaseModel):
     id: int
     requisition_id: int
     title: str
-    description: str
+    description: str  # AI-generated job description
     location: str
     experience_required: int
     skills_required: List[str]
     salary_range_min: Optional[int]
     salary_range_max: Optional[int]
     employment_type: str
-    status: str
-    published_portals: List[str]
+    status: str  # Draft, Published, Closed
+    published_portals: List[str]  # List of portals where job is published
     external_job_ids: dict
     created_by: int
     created_at: datetime
@@ -55,7 +60,10 @@ class JobPostResponse(BaseModel):
         from_attributes = True
 
 class PortalPublishRequest(BaseModel):
-    portals: List[str]  # ["linkedin", "naukri", "indeed"]
+    """
+    job post publishing requests.
+    """
+    portals: List[str]
 
 @router.post("/", response_model=JobPostResponse)
 def create_job_post(
@@ -63,11 +71,14 @@ def create_job_post(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Create a job post from a requisition with fast AI-generated description"""
+    """
+    Create a job post from a requisition with AI-generated description.
+    """
     import time
     
     try:
-        # Get the requisition
+        # Validate requisition ownership and existence
+        # This ensures users can only create job posts from their own requisitions
         requisition = db.query(Requisition).filter(
             Requisition.id == job_post.requisition_id,
             Requisition.created_by == current_user.id
@@ -79,11 +90,11 @@ def create_job_post(
                 detail=f"Requisition with ID {job_post.requisition_id} not found or you don't have permission to access it"
             )
         
-        # Log the start of AI generation
+        # Log AI generation start for performance monitoring
         logger.info(f"Starting AI generation for requisition {requisition.id}...")
         start_time = time.time()
         
-        # Generate job description using fast AI generation
+        # Generate job description using advanced AI technology
         try:
             ai_description = generate_jd_ultimate(
                 designation=requisition.title,
@@ -94,7 +105,6 @@ def create_job_post(
             )
         except Exception as ai_error:
             logger.error(f"AI generation failed: {ai_error}")
-            # Use fallback description if AI fails
             from app.services.jd_generator_ultimate import create_ultimate_fallback_jd
             ai_description = create_ultimate_fallback_jd(
                 designation=requisition.title,
@@ -108,14 +118,13 @@ def create_job_post(
         generation_time = time.time() - start_time
         logger.info(f"Job description generated in {generation_time:.2f} seconds")
         
-        # Calculate expiry date
         expires_at = datetime.utcnow() + timedelta(days=job_post.expires_in_days)
         
-        # Create job post
+        # Create job post with AI-generated content and requisition data
         db_job_post = JobPost(
             requisition_id=requisition.id,
             title=requisition.title,
-            description=ai_description,
+            description=ai_description,  # AI-generated comprehensive description
             location=requisition.location,
             experience_required=requisition.experience_required,
             skills_required=requisition.skills_required,
@@ -126,6 +135,8 @@ def create_job_post(
             expires_at=expires_at
         )
         
+        # Persist job post to database with transaction management
+        # This ensures data consistency and proper error handling
         db.add(db_job_post)
         db.commit()
         db.refresh(db_job_post)
@@ -134,7 +145,6 @@ def create_job_post(
         return db_job_post
         
     except HTTPException:
-        # Re-raise HTTP exceptions
         raise
     except Exception as e:
         logger.error(f"Unexpected error in create_job_post: {e}", exc_info=True)
@@ -151,7 +161,9 @@ def get_job_posts(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get all job posts for the current user"""
+    """
+    Retrieve all job posts for the authenticated user.
+    """
     job_posts = db.query(JobPost).filter(
         JobPost.created_by == current_user.id
     ).offset(skip).limit(limit).all()
@@ -163,7 +175,11 @@ def get_job_post(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get a specific job post by ID"""
+    """
+    Retrieve a specific job post by ID.
+    """
+    # Query specific job post with user ownership validation
+    # This ensures users can only access their own job posts
     job_post = db.query(JobPost).filter(
         JobPost.id == job_post_id,
         JobPost.created_by == current_user.id
@@ -184,7 +200,11 @@ def update_job_post(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Update a job post"""
+    """
+    Update an existing job post with partial data.
+    """
+    # Validate job post ownership before allowing updates
+    # This ensures users can only modify their own job posts
     job_post = db.query(JobPost).filter(
         JobPost.id == job_post_id,
         JobPost.created_by == current_user.id
@@ -195,8 +215,7 @@ def update_job_post(
             status_code=404,
             detail="Job post not found"
         )
-    
-    # Update only provided fields
+    # Apply the updated data to the job post object
     update_data = job_post_update.dict(exclude_unset=True)
     for field, value in update_data.items():
         setattr(job_post, field, value)
@@ -213,7 +232,7 @@ def publish_job_post(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Publish job post to external portals (simulated)"""
+    # This ensures users can only publish their own job posts
     job_post = db.query(JobPost).filter(
         JobPost.id == job_post_id,
         JobPost.created_by == current_user.id
@@ -225,23 +244,23 @@ def publish_job_post(
             detail="Job post not found"
         )
     
-    # Simulate publishing to external portals
+    # Simulate publishing
     published_portals = []
     external_job_ids = {}
     
     for portal in publish_request.portals:
         if portal.lower() in ["linkedin", "naukri", "indeed"]:
-            # Simulate external job ID generation
             external_id = f"{portal.upper()}_{job_post_id}_{datetime.now().strftime('%Y%m%d')}"
             external_job_ids[portal] = external_id
             published_portals.append(portal)
     
-    # Update job post with publishing information
+    # Update job post
     job_post.published_portals = published_portals
     job_post.external_job_ids = external_job_ids
     job_post.status = "Published"
     job_post.published_at = datetime.utcnow()
     
+    # Persist publishing information to database
     db.commit()
     db.refresh(job_post)
     
@@ -257,7 +276,10 @@ def regenerate_job_description(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Regenerate job description using AI"""
+    """
+    Regenerate job description using AI technology.
+    """
+    # Validate job post ownership before allowing regeneration
     job_post = db.query(JobPost).filter(
         JobPost.id == job_post_id,
         JobPost.created_by == current_user.id
@@ -269,7 +291,7 @@ def regenerate_job_description(
             detail="Job post not found"
         )
     
-    # Get requisition details
+    # Retrieve associated requisition for AI generation context
     requisition = db.query(Requisition).filter(
         Requisition.id == job_post.requisition_id
     ).first()
@@ -280,7 +302,7 @@ def regenerate_job_description(
             detail="Associated requisition not found"
         )
     
-    # Generate new job description using AI
+    # Generate new job description using AI technology
     new_description = generate_jd(
         designation=requisition.title,
         experience=requisition.experience_required,
@@ -289,7 +311,7 @@ def regenerate_job_description(
         department=requisition.department
     )
     
-    # Update job post with new description
+    # Update job post with new AI-generated description
     job_post.description = new_description
     db.commit()
     db.refresh(job_post)
@@ -305,7 +327,11 @@ def delete_job_post(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Delete a job post"""
+    """
+    Delete a job post permanently.
+    """
+    # Validate job post ownership before allowing deletion
+    # This ensures users can only delete their own job posts
     job_post = db.query(JobPost).filter(
         JobPost.id == job_post_id,
         JobPost.created_by == current_user.id
@@ -317,6 +343,8 @@ def delete_job_post(
             detail="Job post not found"
         )
     
+    # Permanently delete the job post from database
+    # This operation cannot be undone, ensuring data integrity
     db.delete(job_post)
     db.commit()
     
@@ -324,19 +352,23 @@ def delete_job_post(
 
 @router.get("/health/ai")
 def check_ai_health():
-    """Check AI model health and performance"""
+    """
+    Check AI model health and performance status.
+    """
     try:
         from app.services.jd_generator_ultimate import get_model_info
         import time
         
         start_time = time.time()
         
-        # Test fallback generation instead of AI model
+        # Test fallback generation mechanism for reliability
+        # This ensures the system remains functional even without AI models
         from app.services.jd_generator_ultimate import create_ultimate_fallback_jd
         test_start = time.time()
         
         try:
-            # Test the fallback generation
+            # Test the fallback generation with sample data
+            # This validates that the system can generate job descriptions
             test_jd = create_ultimate_fallback_jd(
                 designation="Software Engineer",
                 experience=3,
@@ -347,6 +379,7 @@ def check_ai_health():
             test_time = time.time() - test_start
             load_time = time.time() - start_time
             
+            # Get model information for detailed health reporting
             model_info = get_model_info()
             
             return {
@@ -362,6 +395,7 @@ def check_ai_health():
             }
             
         except Exception as e:
+            # Handle fallback generation failures
             return {
                 "status": "unhealthy",
                 "message": f"Fallback generation test failed: {str(e)}",
@@ -370,6 +404,7 @@ def check_ai_health():
             }
         
     except Exception as e:
+        # Handle overall health check failures
         logger.error(f"AI health check failed: {e}")
         return {
             "status": "unhealthy",
