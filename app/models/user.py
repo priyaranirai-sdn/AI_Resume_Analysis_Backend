@@ -8,11 +8,17 @@ import secrets
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 class User(Base):
+    """User model representing HR managers"""
     __tablename__ = "users"
     
+    # Primary key and unique identifier
     id = Column(Integer, primary_key=True, index=True)
+    
+    # Authentication credentials
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
+    
+    # User profile information
     full_name = Column(String, nullable=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)

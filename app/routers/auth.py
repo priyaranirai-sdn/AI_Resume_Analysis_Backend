@@ -7,14 +7,22 @@ from app.models.user import User
 from app.auth import create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
 from pydantic import BaseModel, EmailStr
 
+# Create router instance with authentication prefix and tag
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 class UserCreate(BaseModel):
-    email: EmailStr
+    """
+    This model validates the input data for creating a new HR manager account.
+    EmailStr ensures proper email format validation.
+    """
+    email: EmailStr  # Validated email format
     password: str
     full_name: str
 
 class UserLogin(BaseModel):
+    """
+    Contains the credentials needed to authenticate an existing user.
+    """
     email: EmailStr
     password: str
 
@@ -26,8 +34,10 @@ class Token(BaseModel):
 
 @router.post("/register", response_model=Token)
 def register(user: UserCreate, db: Session = Depends(get_db)):
-    """Register a new HR Manager"""
-    # Check if user already exists
+    """
+    Register a new HR Manager account.
+    """
+    # Check if user already exists to prevent duplicate accounts
     db_user = db.query(User).filter(User.email == user.email).first()
     if db_user:
         raise HTTPException(
@@ -35,7 +45,7 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
             detail="Email already registered"
         )
     
-    # Create new user
+    # Create new user with hashed password for security
     hashed_password = User.hash_password(user.password)
     db_user = User(
         email=user.email,
@@ -61,17 +71,20 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=Token)
 def login(user: UserLogin, db: Session = Depends(get_db)):
-    """Login HR Manager"""
-    # Authenticate user
+    """
+    Authenticate an existing HR Manager and return access token.
+    """
+    # Authenticate user by checking email and password
     db_user = db.query(User).filter(User.email == user.email).first()
     if not db_user or not db_user.verify_password(user.password):
+        # Generic error message prevents attackers from determining if email exists
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # Create access token
+    # Create access token for authenticated user
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": str(db_user.id)}, expires_delta=access_token_expires
