@@ -8,7 +8,7 @@ import os
 # Default PostgreSQL connection string - update with your credentials
 DATABASE_URL = os.getenv(
     "DATABASE_URL", 
-    "postgresql://postgres:Priya%4001@localhost:5432/talentfitai"
+    "postgresql://postgres:postgres@172.10.3.17:5432/talentfitai"
 )
 
 # Create engine with PostgreSQL

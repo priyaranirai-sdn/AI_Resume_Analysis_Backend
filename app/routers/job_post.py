@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel
@@ -7,7 +8,7 @@ from app.models.job_post import JobPost
 from app.models.requisition import Requisition
 from app.models.user import User
 from app.auth import get_current_user
-from app.services.jd_generator_optimized import generate_jd
+from app.services.jd_generator_ultimate import generate_jd_ultimate
 from datetime import datetime, timedelta
 import logging
 
@@ -90,7 +91,7 @@ def create_job_post(
             # Use ThreadPoolExecutor to handle AI generation with timeout
             with ThreadPoolExecutor(max_workers=1) as executor:
                 future = executor.submit(
-                    generate_jd,
+                    generate_jd_ultimate,
                     designation=requisition.title,
                     experience=requisition.experience_required,
                     location=requisition.location,
@@ -98,14 +99,14 @@ def create_job_post(
                     department=requisition.department
                 )
                 
-                # Wait for AI generation with 15 second timeout (reduced from 30)
-                ai_description = future.result(timeout=15)
+                # Wait for AI generation with 8 second timeout to match client expectations
+                ai_description = future.result(timeout=8)
                 
         except Exception as ai_error:
             logger.error(f"AI generation failed: {ai_error}")
             # Use fallback description if AI fails
-            from app.services.jd_generator_optimized import create_fallback_jd
-            ai_description = create_fallback_jd(
+            from app.services.jd_generator_ultimate import create_ultimate_fallback_jd
+            ai_description = create_ultimate_fallback_jd(
                 designation=requisition.title,
                 experience=requisition.experience_required,
                 location=requisition.location,
@@ -335,11 +336,11 @@ def delete_job_post(
 def check_ai_health():
     """Check AI model health and performance"""
     try:
-        from app.services.jd_generator_optimized import get_model_components
+        from app.services.jd_generator_ultimate import get_optimized_generator, get_model_info
         import time
         
         start_time = time.time()
-        generator = get_model_components()
+        generator = get_optimized_generator()
         load_time = time.time() - start_time
         
         if generator is None:
@@ -363,12 +364,16 @@ def check_ai_health():
         )
         test_time = time.time() - test_start
         
+        model_info = get_model_info()
+        
         return {
             "status": "healthy",
             "message": "AI model is working correctly",
             "load_time": load_time,
             "test_generation_time": test_time,
-            "model_available": True
+            "model_available": True,
+            "model_name": model_info.get("model_name"),
+            "model_type": model_info.get("model_type")
         }
         
     except Exception as e:
