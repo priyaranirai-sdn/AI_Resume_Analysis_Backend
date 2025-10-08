@@ -9,7 +9,7 @@ import sys
 
 def test_server():
     """Test the server endpoints"""
-    base_url = "http://localhost:8000"
+    base_url = "http://localhost:9142"
     
     print("🧪 Testing TalentFitAI Backend Server...")
     print("=" * 50)
@@ -44,8 +44,8 @@ def test_server():
             print(f"❌ Docs endpoint failed: {response.status_code}")
             
         print("\n🎉 All basic tests passed!")
-        print("📚 API Documentation: http://localhost:8000/docs")
-        print("🔍 Alternative Docs: http://localhost:8000/redoc")
+        print("📚 API Documentation: http://localhost:9142/docs")
+        print("🔍 Alternative Docs: http://localhost:9142/redoc")
         return True
         
     except requests.exceptions.ConnectionError:

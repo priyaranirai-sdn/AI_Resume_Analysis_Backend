@@ -24,12 +24,12 @@ if ! python -c "import fastapi" 2>/dev/null; then
 fi
 
 echo "🔧 Starting FastAPI server..."
-echo "📚 API Documentation: http://localhost:8000/docs"
-echo "🔍 Alternative Docs: http://localhost:8000/redoc"
-echo "❤️  Health Check: http://localhost:8000/health"
+echo "📚 API Documentation: http://localhost:9142/docs"
+echo "🔍 Alternative Docs: http://localhost:9142/redoc"
+echo "❤️  Health Check: http://localhost:9142/health"
 echo ""
 echo "Press Ctrl+C to stop the server"
 echo "=========================================="
 
 # Start the server
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn app.main:app --reload --host 0.0.0.0 --port 9142

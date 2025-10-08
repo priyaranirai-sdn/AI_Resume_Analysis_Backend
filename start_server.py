@@ -28,9 +28,9 @@ def start_server():
         print("✅ Application loaded successfully!")
         
         print("\n🔧 Starting server...")
-        print("📚 API Documentation: http://localhost:8000/docs")
-        print("🔍 Alternative Docs: http://localhost:8000/redoc")
-        print("❤️  Health Check: http://localhost:8000/health")
+        print("📚 API Documentation: http://localhost:9142/docs")
+        print("🔍 Alternative Docs: http://localhost:9142/redoc")
+        print("❤️  Health Check: http://localhost:9142/health")
         print("\nPress Ctrl+C to stop the server")
         print("=" * 50)
         
@@ -38,7 +38,7 @@ def start_server():
         uvicorn.run(
             "app.main:app",
             host="0.0.0.0",
-            port=8000,
+            port=9142,
             reload=True,
             log_level="info",
             access_log=True

@@ -6,6 +6,9 @@ from app.models.database import get_db
 from app.models.user import User
 from app.auth import create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
 from pydantic import BaseModel, EmailStr
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Create router instance with authentication prefix and tag
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -31,6 +34,8 @@ class Token(BaseModel):
     token_type: str
     user_id: int
     user_email: str
+    role:str
+    user_name:str
 
 @router.post("/register", response_model=Token)
 def register(user: UserCreate, db: Session = Depends(get_db)):
@@ -66,33 +71,36 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
         "access_token": access_token,
         "token_type": "bearer",
         "user_id": db_user.id,
-        "user_email": db_user.email
+        "user_email": db_user.email,
+        "role": db_user.role
     }
 
 @router.post("/login", response_model=Token)
 def login(user: UserLogin, db: Session = Depends(get_db)):
-    """
-    Authenticate an existing HR Manager and return access token.
-    """
-    # Authenticate user by checking email and password
+    logger.info(f"user: {user}")
+
+    # Authenticate user
     db_user = db.query(User).filter(User.email == user.email).first()
     if not db_user or not db_user.verify_password(user.password):
-        # Generic error message prevents attackers from determining if email exists
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # Create access token for authenticated user
+    # Create access token
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": str(db_user.id)}, expires_delta=access_token_expires
     )
     
+    # Return token + user info + role
     return {
         "access_token": access_token,
         "token_type": "bearer",
         "user_id": db_user.id,
-        "user_email": db_user.email
+        "user_email": db_user.email,
+        "role": db_user.role,
+        "user_name":db_user.full_name
+
     }

@@ -8,8 +8,14 @@ import os
 # Default PostgreSQL connection string - update with your credentials
 DATABASE_URL = os.getenv(
     "DATABASE_URL", 
-    "postgresql://postgres:postgres@172.10.3.17:5432/talentfitai"
+    "postgresql://talentfitai:JDG7uyjhgd5VHA@54.201.160.69:5432/talentfitai"
 )
+
+
+# DATABASE_URL = os.getenv(
+#     "DATABASE_URL",
+#     "postgresql://test:test@localhost:5432/mydb"
+# )
 
 # Create engine with PostgreSQL
 engine = create_engine(DATABASE_URL)

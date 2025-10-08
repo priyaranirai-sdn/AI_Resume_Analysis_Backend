@@ -32,6 +32,11 @@ def create_database():
         password = "password"
         host = "172.10.3.17"
         port = 5432
+
+        # username = "test"
+        # password = "test"
+        # host = "localhost"
+        # port = 5432
     
     print(f"🔧 Setting up PostgreSQL database...")
     print(f"   Host: {host}")

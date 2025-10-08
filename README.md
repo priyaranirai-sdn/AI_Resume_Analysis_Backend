@@ -76,9 +76,9 @@ py start_server.py
 ```
 
 ### 5. Access the Application
-- **API Documentation**: http://localhost:8000/docs
-- **Alternative Docs**: http://localhost:8000/redoc
-- **Health Check**: http://localhost:8000/health
+- **API Documentation**: http://localhost:9142/docs
+- **Alternative Docs**: http://localhost:9142/redoc
+- **Health Check**: http://localhost:9142/health
 
 ## 📚 API Documentation
 
@@ -401,7 +401,7 @@ data = {
 }
 
 response = requests.post(
-    "http://localhost:8000/resume-analysis/analyze",
+    "http://localhost:9142/resume-analysis/analyze",
     files=files,
     data=data,
     headers={"Authorization": "Bearer YOUR_API_KEY"}
@@ -419,7 +419,7 @@ formData.append('resume_file', fileInput.files[0]);
 formData.append('requisition_id', '1');
 formData.append('candidate_name', 'John Doe');
 
-fetch('http://localhost:8000/resume-analysis/analyze', {
+fetch('http://localhost:9142/resume-analysis/analyze', {
     method: 'POST',
     headers: {
         'Authorization': 'Bearer YOUR_API_KEY'
